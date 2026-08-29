@@ -1,0 +1,103 @@
+#' simPOP class
+#'
+#' An S4 class representing a simulated population and the information required
+#' to simulate and analyse disease transmission through temporal contact
+#' networks.
+#'
+#' The object stores the population structure, temporal contact matrices,
+#' infection status across simulation steps and replicates, transmission
+#' parameters, effective transmission contacts generated during the simulation,
+#' and results from transmission pathway and infection-source inference.
+#'
+#' @slot method Character string indicating the method used to generate the
+#' population.
+#'
+#' @slot IDs Numeric vector containing the identifiers of the individuals in the
+#' simulated population.
+#'
+#' @slot IDsinfo Data frame containing optional individual-level information.
+#' An empty data frame indicates that no additional individual information has
+#' been provided.
+#'
+#' @slot steps Numeric scalar indicating the number of transmission steps in the
+#' simulation.
+#'
+#' @slot rep Numeric scalar indicating the number of simulation replicates.
+#'
+#' @slot statusM List containing the infection-status matrices for each
+#' simulation replicate. Rows represent individuals and columns represent
+#' simulation steps. Individuals are coded as susceptible (`0`), infected
+#' (`1`), or recovered (`2`). In SIS models, recovered individuals return to
+#' the susceptible state.
+#'
+#' @slot ContactM Named list containing the temporal contact networks available
+#' for the simulated population. Each element represents one contact-network
+#' type and contains a list of adjacency matrices describing contacts between
+#' individuals across simulation steps.
+#'
+#' @slot TransPar List containing the transmission parameters used in the
+#' stochastic transmission model, including the infection (`beta`), recovery
+#' (`gamma`), and, when applicable, loss-of-immunity (`epsilon`) parameters.
+#'
+#' @slot TransDF Data frame containing the effective transmission contacts
+#' generated during the stochastic transmission simulation. It records the
+#' simulation replicate, transmission step, infectious source, newly infected
+#' individual, and the contact network through which transmission was simulated.
+#'
+#' @slot RISKest Data frame containing results from infection-source inference,
+#' including information on potential infectious contacts, transmission risk,
+#' and uncertainty in the identification of the effective transmission contact.
+#' An empty data frame indicates that infection-source inference has not been
+#' performed.
+#'
+#' @slot RISKcont Data frame containing results from causative contact-network
+#' inference, including the probability of observed infection events under the
+#' candidate contact networks. An empty data frame indicates that contact-network
+#' inference has not been performed.
+#'
+#' @examples
+#' # Create a simple simulated population
+#' POP <- methods::new(
+#'   "simPOP",
+#'   method = "simplePOP",
+#'   IDs = 1:10,
+#'   steps = 20,
+#'   rep = 2,
+#'   statusM = lapply(
+#'     1:2,
+#'     function(i) matrix(0, nrow = 10, ncol = 20)
+#'   )
+#' )
+#'
+#' POP
+#'
+#' @export
+methods::setClass(
+  "simPOP",
+  slots = c(
+    method = "character",
+    IDs = "numeric",
+    IDsinfo = "data.frame",
+    steps = "numeric",
+    rep = "numeric",
+    statusM = "list",
+    ContactM = "list",
+    TransPar = "list",
+    TransDF = "data.frame",
+    RISKest = "data.frame",
+    RISKcont = "data.frame"
+  ),
+  prototype = list(
+    method = character(),
+    IDs = numeric(),
+    IDsinfo = data.frame(),
+    steps = numeric(),
+    rep = numeric(),
+    statusM = list(),
+    ContactM = list(),
+    TransPar = list(),
+    TransDF = data.frame(),
+    RISKest = data.frame(),
+    RISKcont = data.frame()
+  )
+)

@@ -1,0 +1,272 @@
+---
+title: "SimNet examples"
+author: "Hector Marina"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{SimNet examples}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+---
+
+```{r setup, include=FALSE}
+library(SimNet)
+
+knitr::opts_chunk$set(
+  collapse=TRUE,
+  comment="#>",
+  fig.width=7,
+  fig.height=5,
+  message=FALSE,
+  warning=FALSE
+)
+```
+
+`SimNet` provides tools to simulate stochastic disease transmission through
+temporal contact networks and to infer the contact structure most likely to
+explain observed infection events.
+
+This vignette presents a simple workflow using **simulated data only**. We
+create a population, generate alternative temporal contact networks, simulate
+transmission through one known network, and then use the simulated infection
+history to infer the causative transmission network.
+
+The example is intentionally smaller than the simulations used in the
+manuscript so that it can be run quickly.
+
+<p align="center">
+  <img src="../man/figures/logo.png" width="180">
+</p>
+
+This vignette introduces the main `SimNet` workflow:
+
+1. [Install and load SimNet](#ip)
+2. [Create a simulated population](#sp)
+3. [Simulate temporal contact networks](#scn)  
+   3.1. [Direct contact networks](#direct)  
+   3.2. [Object-mediated contact networks](#object)  
+   3.3. [Naive contact network](#naive)
+4. [Simulate disease transmission](#st)  
+   4.1. [Infection-status matrix](#status)  
+   4.2. [Infection dynamics](#dynamics)
+5. [Infer the causative transmission network](#itp)  
+   5.1. [Estimate transmission probabilities](#riskcont)  
+   5.2. [Compare candidate networks](#compare)
+6. [Final remarks](#final)
+
+
+## Install and load SimNet {#ip}
+
+The latest development version of `SimNet` can be installed from GitHub:
+
+```{r installation, eval=FALSE}
+# install.packages("remotes")
+remotes::install_github("Hector-Marina/SimNet", build_vignettes=TRUE)
+```
+
+Load the package before starting the simulation:
+
+```{r load-package, eval=FALSE}
+library(SimNet)
+```
+
+## Create a simulated population {#sp}
+
+A simulation starts by creating a `simPOP` object with `simplePOP()`. The
+object stores the individuals, simulation steps, replicates, contact networks,
+infection histories, and transmission information generated during the
+workflow. We simulate 200 individuals (`NIDs`) over 100 time steps (`steps`) and 100
+replicates (`rep`):
+
+```{r create-population}
+set.seed(123)
+POP=simplePOP(NIDs=200,steps=100,rep=100)
+POP
+```
+
+
+## Simulate temporal contact networks {#scn}
+
+Transmission may be compatible with several contact structures recorded over
+the same period. We therefore generate alternative temporal contact networks
+that will later be evaluated as candidate transmission pathways.
+
+The example contains five networks:
+
+- `SIN`: **S**ocial **I**nteraction **N**etwork;
+- `ASN`: **A**rea **S**imilarity **N**etwork;
+- `MPN`: Object-mediated **M**ilking **P**arlour **N**etwork;
+- `RCN`: Object-mediated **R**esting **C**ubicle **N**etwork; and
+- `NCN`: **N**aïve homogeneous-mixing **C**ontact **N**etwork.
+
+### Direct contact networks {#direct}
+
+`simCONT()` generates weighted temporal networks with gamma-distributed edge
+weights and temporal correlation between consecutive steps.
+
+Here, two independent networks are generated to represent two alternative
+spatially derived contact networks following [Marina et al., (2024)](https://doi.org/10.1016/J.APPLANIM.2024.106366)
+
+```{r direct-networks}
+POP=simCONT(POP=POP, NameCont="SIN", gshape=1, gscale=5, val=1, rho=0.25, verbose=FALSE)
+POP=simCONT(POP=POP, NameCont="ASN", gshape=1, gscale=5, val=1, rho=0.25, verbose=FALSE)
+```
+
+
+### Object-mediated contact networks {#object}
+
+`simOBJ()` generates directed networks based on the sequential use of shared
+objects. An individual can therefore transmit only to individuals using the
+same object later in the sequence. We simulate two object-mediated contact 
+structures:
+
+```{r object-networks}
+POP=simOBJ(POP=POP, NameCont="MPN", pos=24,  freq=2, val=12, verbose=FALSE)
+POP=simOBJ(POP=POP, NameCont="RCN", pos=200, freq=5, val=4,  verbose=FALSE)
+```
+
+### Naive contact network {#naive}
+
+Finally, `uniCONT()` creates a Naïve homogeneous-mixing contact network in which 
+every individual is connected to every other individual with the same edge weight.
+This provides a naïve reference scenario without restrictions imposed by a
+specific contact structure.
+
+```{r naive-network}
+POP=uniCONT(POP=POP, NameCont="NCN", val=1, verbose=FALSE)
+POP
+```
+
+The `simPOP` object now contains all candidate temporal contact networks used
+in the following transmission simulation and inference.
+
+
+## Simulate disease transmission {#st}
+
+We next simulate transmission through one of the candidate networks using
+`SIRmod()`. Because the true transmission network is known in a simulation,
+the result can later be used to evaluate whether the inference procedure
+recovers the correct network. The `beta` and `gamma` values, and the number of 
+initially infected individuals have been derived from [Woudstra et al., (2023)](https://doi.org/10.3168/jds.2022-22942)
+
+```{r simulate-transmission}
+beta=0.000172244
+gamma=0.0358299
+NID_inf=sample(1:100,7)
+```
+
+
+In this example, transmission is simulated through the **SIN** using an SIS
+model. Seven individuals are infectious at the first time step.
+
+```{r simulate-transmission-tva}
+POP=SIRmod(POP=POP, NameCont="MPN", beta=beta, gamma=gamma, epsilon=NULL,
+           IDseed=NID_inf, verbose=FALSE)
+POP
+```
+
+Successful transmission events are stored in `POP@TransDF`:
+
+```{r transmission-events}
+head(POP@TransDF)
+```
+
+
+### Infection-status matrix {#status}
+
+The infection history of one replicate can be visualised as a status matrix:
+
+```{r plot-status}
+plot(POP, rep=1, type="inf.mat")
+```
+
+
+### Infection dynamics {#dynamics}
+
+The temporal dynamics across all replicates can also be visualised directly
+from the `simPOP` object:
+
+```{r plot-dynamics}
+plot(POP, type="inf.curv")
+```
+
+
+## Infer the causative transmission network {#itp}
+
+The infection status generated above is now treated as the observed infection
+history. All five contact networks are evaluated as alternative explanations
+for the transmission events.
+
+Although we know that the SIN generated the infections, this information is
+not supplied to the inference procedure.
+
+### Estimate transmission probabilities {#riskcont}
+
+`RISKcont()` estimates, for every newly infected individual, the probability
+that the infection could have occurred through each candidate contact network.
+The Homogeneus-mixing contact network, a.k.a. NCN, is used as the reference network:
+
+```{r infer-network}
+POP=RISKcont(POP=POP, NameCont=names(POP@ContactM), ref="NCN", verbose=FALSE)
+```
+
+A transmission probability of zero indicates that an infection event was
+incompatible with that contact network because no infectious individual could
+explain the observed infection through the corresponding contacts.
+
+The proportion of impossible events can be summarised as:
+
+```{r impossible-events}
+round(tapply(POP@RISKcont$TProb,POP@RISKcont$ContactM,
+             function(x) mean(x==0, na.rm=TRUE)),3)
+```
+
+
+### Compare candidate networks {#compare}
+
+Event-level probabilities can be combined within replicate to calculate the
+likelihood associated with each candidate contact network:
+
+```{r network-likelihood}
+L=aggregate(TProb ~ Replicate + ContactM, data=POP@RISKcont,FUN=prod)
+Lmean=tapply( L$TProb,  L$ContactM,  mean, na.rm=TRUE)
+round(Lmean/Lmean["NCN"],2)
+```
+
+Values above `1` indicate greater support than the reference network (NCN).
+
+The relative transmission probabilities can be visualised using
+`plotRISKcont2()`. The figure is printed directly in the vignette and is not
+saved to an external file.
+
+```{r plot-network-inference}
+plotRISKcont2(POP, ref="NCN", Nsim="MPN-simulated Transmission")
+```
+
+
+## Final remarks {#final}
+
+This example illustrates the basic `SimNet` simulation-to-inference workflow:
+
+```text
+simPOP
+  -> temporal contact networks
+  -> stochastic transmission
+  -> observed infection history
+  -> candidate-network probabilities
+  -> inferred transmission network
+```
+
+Because the example uses simulated data, the true causative network is known
+and the inference results can be compared directly with the network used to
+generate transmission.
+
+Larger populations, longer simulation periods, additional replicates, and
+alternative transmission scenarios can be explored using the same workflow.
+
+We hope that `SimNet` provides a useful and flexible framework for exploring 
+plausible transmission routes for different infectious pathogens.
+
+For further details on individual functions and their available arguments, 
+please refer to the corresponding help pages using `?function_name`.
+
+Thank you for using `SimNet` — and happy transmission tracking! 🐄🦠🧫

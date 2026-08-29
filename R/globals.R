@@ -1,0 +1,10 @@
+utils::globalVariables(
+  c(
+    "ContactM",
+    "Prop",
+    "Var1",
+    "Var2",
+    "Freq",
+    "polygon"
+  )
+)

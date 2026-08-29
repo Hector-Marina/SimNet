@@ -1,0 +1,35 @@
+Package: SimNet
+Type: Package
+Title: Simulation and Inference of Disease Transmission in Temporal Contact Networks
+Version: 1.0.0
+Date: 2026-08-24
+Authors@R: c(
+    person("Hector", "Marina", email = "hector.marina@slu.se", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-9226-2902")),
+    person("Javier", "Sanchez", email = "jsanchez@upei.ca", role = "aut",
+           comment = c(ORCID = "0000-0003-2605-8094")), 
+    person("Lars", "Rönnegård", email = "lars.ronnegard@slu.se", role = "aut",
+           comment = c(ORCID = "0000-0002-1057-5401")))
+Maintainer: Hector Marina <hector.marina@slu.se>
+Description: Provides tools to simulate stochastic disease transmission in 
+  populations connected through temporal contact networks and to evaluate 
+  likely transmission networks and individual transmission pathways. 
+  The package supports multiple contact-network structures, 
+  stochastic epidemic models, transmission-parameter estimation, and 
+  inference of potential sources of infection.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Config/roxygen2/version: 8.1.0
+Imports:
+    MASS,
+    ggplot2,
+    igraph,
+    methods,
+    simstudy,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
